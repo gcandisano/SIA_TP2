@@ -52,6 +52,24 @@ class Triangle:
             a=random.uniform(0.1, 1.0),
         )
 
+    def copy(self):
+        return Triangle(self.x1, self.y1, self.x2, self.y2,
+                        self.x3, self.y3, self.r, self.g, self.b, self.a)
+
+    def mutate_positions(self, width, height):
+        self.x1 = self.x1 * random.uniform(0.85, 1.15) % width
+        self.y1 = self.y1 * random.uniform(0.85, 1.15) % height
+        self.x2 = self.x2 * random.uniform(0.85, 1.15) % width
+        self.y2 = self.y2 * random.uniform(0.85, 1.15) % height
+        self.x3 = self.x3 * random.uniform(0.85, 1.15) % width
+        self.y3 = self.y3 * random.uniform(0.85, 1.15) % height
+
+    def mutate_color(self):
+        self.r = self.r * random.uniform(0.85, 1.15) % 256
+        self.g = self.g * random.uniform(0.85, 1.15) % 256
+        self.b = self.b * random.uniform(0.85, 1.15) % 256
+        self.a = min(1.0, self.a * random.uniform(0.85, 1.15))
+
     def clamp(self, width, height):
         """Devuelve un nuevo Triangle con todos los genes dentro de rango."""
         return Triangle(

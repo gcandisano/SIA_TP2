@@ -1,0 +1,25 @@
+{
+  "image_path": "assets/argentina_flag.png",
+  "num_triangles": 50,
+  "population_size": 50,
+  "max_generations": 200,
+  "target_fitness": 0.99,
+
+  "selection": {
+    "method": "elite",
+    "k": 25
+  },
+
+  "crossover": {
+    "method": "one_point"
+  },
+
+  "mutation": {
+    "method": "uniform",
+    "mutation_rate": 0.1
+  },
+
+  "replacement": {
+    "method": "traditional"
+  }
+}
