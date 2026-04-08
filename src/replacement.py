@@ -20,29 +20,3 @@ def young_bias(population, offspring):
 
     best_parents = sorted(population, reverse=True)[: n - k]
     return offspring + best_parents
-
-
-def supervivencia_aditiva(
-    poblacion_actual: list[object],
-    descendencia: list[object],
-    tamaño_poblacion: int,
-) -> list[object]:
-    candidatos = poblacion_actual + descendencia
-    candidatos.sort(key=lambda individuo: individuo.fitness, reverse=True)
-    return candidatos[:tamaño_poblacion]
-
-
-def supervivencia_exclusiva(
-    descendencia: list[object],
-    tamaño_poblacion: int,
-) -> list[object]:
-    if len(descendencia) < tamaño_poblacion:
-        raise ValueError(
-            f"Se necesitan al menos {tamaño_poblacion} hijos en descendencia para supervivencia_exclusiva."
-        )
-
-    return sorted(
-        descendencia,
-        key=lambda individuo: individuo.fitness,
-        reverse=True,
-    )[:tamaño_poblacion]
