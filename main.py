@@ -1,19 +1,20 @@
+import argparse
 import json
 import os
-import sys
 import random
+import sys
 
 import numpy as np
 from PIL import Image
 
 sys.path.insert(0, "src")
 
-import selection as sel
 import crossover as cx
 import mutation as mut
 import replacement as rep
-from population import initialize
+import selection as sel
 from fitness import evaluate_population, render
+from population import initialize
 
 
 def load_config(path="config.json"):
@@ -82,8 +83,14 @@ def run(config_path="config.json"):
 
         mut_params = cfg["mutation"]
         offspring = [
-            mutate(ind, width, height, generation=generation,
-                   max_generations=cfg["max_generations"], **mut_params)
+            mutate(
+                ind,
+                width,
+                height,
+                generation=generation,
+                max_generations=cfg["max_generations"],
+                **mut_params,
+            )
             for ind in offspring
         ]
 
@@ -100,9 +107,19 @@ def run(config_path="config.json"):
 
     os.makedirs("output", exist_ok=True)
     render(best, width, height).convert("RGB").save("output/result.png")
-    print(f"Imagen guardada en output/result.png")
+    print("Imagen guardada en output/result.png")
 
 
 if __name__ == "__main__":
-    config_path = sys.argv[1] if len(sys.argv) > 1 else "config.json"
-    run(config_path)
+    parser = argparse.ArgumentParser(
+        description="Compresor de Imágenes mediante Algoritmos Genéticos"
+    )
+    parser.add_argument(
+        "-c",
+        "--config",
+        default="config.json",
+        help="Ruta al archivo de configuración JSON (por defecto: config.json)",
+    )
+
+    args = parser.parse_args()
+    run(args.config)
