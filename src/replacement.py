@@ -1,22 +1,26 @@
-def traditional(population, offspring):
+from individual import Individual
+
+
+def traditional(population: list[Individual], offspring: list[Individual]) -> list[Individual]:
     """
-    Selecciona N individuos del conjunto unificado de padres e hijos.
-    N = tamaño de la población original.
+    Aplica supervivencia aditiva: combina padres e hijos y conserva los N mejores.
+    N corresponde al tamaño de la población original.
     """
     n = len(population)
-    return sorted(population + offspring, reverse=True)[:n]
+    return sorted(population + offspring, key=lambda ind: ind.fitness, reverse=True)[:n]
 
 
-def young_bias(population, offspring):
+def young_bias(population: list[Individual], offspring: list[Individual]) -> list[Individual]:
     """
-    K > N : selecciona N de los K hijos únicamente.
-    K <= N: toma los K hijos + (N-K) mejores padres.
+    Aplica supervivencia exclusiva: la nueva generación se compone solo de hijos.
+    Requiere al menos N hijos, donde N es el tamaño de la población original.
     """
     n = len(population)
     k = len(offspring)
 
-    if k > n:
-        return sorted(offspring, reverse=True)[:n]
+    if k < n:
+        raise ValueError(
+            f"Supervivencia exclusiva requiere al menos {n} hijos, pero se recibieron {k}."
+        )
 
-    best_parents = sorted(population, reverse=True)[: n - k]
-    return offspring + best_parents
+    return sorted(offspring, key=lambda ind: ind.fitness, reverse=True)[:n]
