@@ -4,6 +4,8 @@
   "population_size": 50,
   "max_generations": 2000,
   "target_fitness": 0.99,
+  "stagnation_generations": 150,
+  "stagnation_epsilon": 1e-6,
 
   "selection": {
     "method": "elite",

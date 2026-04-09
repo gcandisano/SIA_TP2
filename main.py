@@ -71,6 +71,12 @@ def run(config_path="config.json"):
     best = max(population)
     print(f"Gen 0 | best fitness: {best.fitness:.6f}")
 
+    stagnation_n = cfg.get("stagnation_generations")
+    stagnation_eps = cfg.get("stagnation_epsilon", 1e-6)
+    use_stagnation = stagnation_n is not None and stagnation_n > 0
+    best_ever = best.fitness
+    gens_without_gain = 0
+
     for generation in range(1, cfg["max_generations"] + 1):
         parents = select(population, cfg["selection"]["k"])
 
@@ -104,6 +110,21 @@ def run(config_path="config.json"):
         if best.fitness >= cfg.get("target_fitness", 1.0):
             print("Criterio de parada: fitness objetivo alcanzado.")
             break
+
+        if use_stagnation:
+            if best.fitness > best_ever + stagnation_eps:
+                best_ever = best.fitness
+                gens_without_gain = 0
+            else:
+                gens_without_gain += 1
+                if best.fitness > best_ever:
+                    best_ever = best.fitness
+                if gens_without_gain >= stagnation_n:
+                    print(
+                        "Criterio de parada: estancamiento "
+                        f"({stagnation_n} generaciones sin mejora > {stagnation_eps})."
+                    )
+                    break
 
     os.makedirs("output", exist_ok=True)
     render(best, width, height).convert("RGB").save("output/result.png")
