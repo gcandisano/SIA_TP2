@@ -77,6 +77,44 @@ class Triangle:
         self.x3 = self.x3 * random.uniform(0.85, 1.15) % width
         self.y3 = self.y3 * random.uniform(0.85, 1.15) % height
 
+    def mutate_one_gene(self, width: int, height: int, strength: float = 1.0) -> None:
+        """Muta exactamente un alelo (un gen de los 10 del triángulo)"""
+        strength = max(0.0, strength)
+        gene_index: int = random.randint(0, 9)
+        span = 0.15 * strength
+        lo, hi = max(0.0, 1.0 - span), 1.0 + span
+        factor = random.uniform(lo, hi)
+
+        if gene_index == 0:
+            self.x1 = self.x1 * factor % width
+            return
+        if gene_index == 1:
+            self.y1 = self.y1 * factor % height
+            return
+        if gene_index == 2:
+            self.x2 = self.x2 * factor % width
+            return
+        if gene_index == 3:
+            self.y2 = self.y2 * factor % height
+            return
+        if gene_index == 4:
+            self.x3 = self.x3 * factor % width
+            return
+        if gene_index == 5:
+            self.y3 = self.y3 * factor % height
+            return
+        if gene_index == 6:
+            self.r = self.r * factor % 256
+            return
+        if gene_index == 7:
+            self.g = self.g * factor % 256
+            return
+        if gene_index == 8:
+            self.b = self.b * factor % 256
+            return
+            
+        self.a = max(0.1, min(1.0, self.a * factor))
+
     def mutate_color(self) -> None:
         self.r = self.r * random.uniform(0.85, 1.15) % 256
         self.g = self.g * random.uniform(0.85, 1.15) % 256

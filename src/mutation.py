@@ -28,13 +28,35 @@ def complete(individual: Individual, width: int, height: int, mutation_rate: flo
     return Individual(triangles)
 
 
-def gene(individual: Individual, width: int, height: int, **_kwargs: Any) -> Individual:
-    raise NotImplementedError
+def gene(individual: Individual, width: int, height: int, mutation_rate: float = 0.5, **_kwargs: Any) -> Individual:
+    """Con probabilidad mutation_rate, muta un único alelo en un triángulo elegido al azar."""
+    if random.random() >= mutation_rate:
+        return individual.copy()
+
+    child = individual.copy()
+    random.choice(child.triangles).mutate_one_gene(width, height)
+    return child
 
 
 def multigen(individual: Individual, width: int, height: int, num_genes: int = 3, **_kwargs: Any) -> Individual:
-    raise NotImplementedError
+    """Muta exactamente num_genes alelos; cada uno puede caer en cualquier triángulo (con reemplazo)."""
+    if num_genes <= 0:
+        return individual.copy()
+
+    child = individual.copy()
+    for _ in range(num_genes):
+        random.choice(child.triangles).mutate_one_gene(width, height)
+    return child
 
 
-def non_uniform(individual: Individual, width: int, height: int, mutation_rate: float = 0.02, generation: int = 0, max_generations: int = 1000, **_kwargs: Any) -> Individual:
-    raise NotImplementedError
+def non_uniform(individual: Individual, width: int, height: int, mutation_rate: float = 0.02, generation: int = 0, max_generations: int = 1000, b: float = 5.0, **_kwargs: Any) -> Individual:
+    """Como mutación de un gen, pero la magnitud del paso decae con la generación. Fuerza ~(1 - t/T)^b con t=generation, T=max_generations: exploración al inicio, pasos finos al acercarse al límite de generaciones (Michalewicz, AG clásicos)."""
+    if random.random() >= mutation_rate:
+        return individual.copy()
+
+    t_ratio = generation / max(max_generations, 1)
+    strength = (1.0 - t_ratio) ** max(0.0, b)
+
+    child = individual.copy()
+    random.choice(child.triangles).mutate_one_gene(width, height, strength=strength)
+    return child

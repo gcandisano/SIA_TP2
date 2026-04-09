@@ -6,9 +6,9 @@ Basado en la revisión del documento de requerimientos (`docs/SIA - TP2 - 2026 1
 
 Aunque se definió la estructura para los diferentes tipos de mutación, varios de ellos levantan `NotImplementedError` y deben ser codificados:
 
-- [ ] **Mutación de un Gen (`gene`)**: Debe alterar únicamente un único gen (por ejemplo, el valor `x` de un vértice, el color `R`, etc.) de un triángulo elegido de forma aleatoria, dada la probabilidad de mutación.
-- [ ] **Mutación Multigen (`multigen`)**: Debe mutar una cantidad determinada de genes (no necesariamente del mismo triángulo).
-- [ ] **Mutación No Uniforme (`non_uniform`)**: La magnitud o probabilidad de la mutación debe decaer (o cambiar) en función de la generación actual respecto a la cantidad máxima de generaciones (`generation` / `max_generations`).
+- [X] **Mutación de un Gen (`gene`)**: Debe alterar únicamente un único gen (por ejemplo, el valor `x` de un vértice, el color `R`, etc.) de un triángulo elegido de forma aleatoria, dada la probabilidad de mutación.
+- [X] **Mutación Multigen (`multigen`)**: Debe mutar una cantidad determinada de genes (no necesariamente del mismo triángulo).
+- [X] **Mutación No Uniforme (`non_uniform`)**: La magnitud o probabilidad de la mutación debe decaer (o cambiar) en función de la generación actual respecto a la cantidad máxima de generaciones (`generation` / `max_generations`).
 
 ## 2. 🛑 Criterios de Parada (`main.py`)
 
