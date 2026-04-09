@@ -3,7 +3,7 @@ import json
 import os
 import random
 import sys
-
+import matplotlib.pyplot as plt
 import numpy as np
 from PIL import Image
 
@@ -69,6 +69,7 @@ def run(config_path="config.json"):
     evaluate_population(population, target, width, height)
 
     best = max(population)
+    best_fitness_per_generation = [best.fitness]
     print(f"Gen 0 | best fitness: {best.fitness:.6f}")
 
     stagnation_n = cfg.get("stagnation_generations")
@@ -105,6 +106,7 @@ def run(config_path="config.json"):
         population = replace(population, offspring)
 
         best = max(population)
+        best_fitness_per_generation.append(best.fitness)
         print(f"Gen {generation} | best fitness: {best.fitness:.6f}")
 
         if best.fitness >= cfg.get("target_fitness", 1.0):
@@ -127,9 +129,21 @@ def run(config_path="config.json"):
                     break
 
     os.makedirs("output", exist_ok=True)
+    plot_fitness(best_fitness_per_generation)
     render(best, width, height).convert("RGB").save("output/result.png")
     print("Imagen guardada en output/result.png")
 
+def plot_fitness(best_fitness_per_generation: list[float]):
+    fitness_plot_path = "output/best_fitness.png"
+    gens = range(len(best_fitness_per_generation))
+    fig, ax = plt.subplots(figsize=(8, 4))
+    ax.plot(gens, best_fitness_per_generation, color="C0")
+    ax.set_xlabel("Generación")
+    ax.set_ylabel("Mejor fitness")
+    ax.grid(True, alpha=0.3)
+    fig.tight_layout()
+    fig.savefig(fitness_plot_path, dpi=150)
+    plt.close(fig)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
