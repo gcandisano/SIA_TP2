@@ -1,8 +1,9 @@
+from __future__ import annotations
 import random
 from copy import deepcopy
 
 
-GENES_PER_TRIANGLE = 10
+GENES_PER_TRIANGLE: int = 10
 
 
 class Triangle:
@@ -12,7 +13,19 @@ class Triangle:
     - a: alpha (transparencia) en [0.0, 1.0].
     """
 
-    def __init__(self, x1, y1, x2, y2, x3, y3, r, g, b, a):
+    def __init__(
+        self,
+        x1: float,
+        y1: float,
+        x2: float,
+        y2: float,
+        x3: float,
+        y3: float,
+        r: float,
+        g: float,
+        b: float,
+        a: float,
+    ):
         self.x1 = x1
         self.y1 = y1
         self.x2 = x2
@@ -24,12 +37,12 @@ class Triangle:
         self.b = b
         self.a = a
 
-    def to_genes(self):
+    def to_genes(self) -> list[float]:
         return [self.x1, self.y1, self.x2, self.y2,
                 self.x3, self.y3, self.r, self.g, self.b, self.a]
 
     @staticmethod
-    def from_genes(genes):
+    def from_genes(genes: list[float]) -> Triangle:
         return Triangle(
             genes[0], genes[1],
             genes[2], genes[3],
@@ -38,7 +51,7 @@ class Triangle:
         )
 
     @staticmethod
-    def random(width, height):
+    def random(width: int, height: int) -> Triangle:
         return Triangle(
             x1=random.uniform(0, width),
             y1=random.uniform(0, height),
@@ -52,11 +65,11 @@ class Triangle:
             a=random.uniform(0.1, 1.0),
         )
 
-    def copy(self):
+    def copy(self) -> Triangle:
         return Triangle(self.x1, self.y1, self.x2, self.y2,
                         self.x3, self.y3, self.r, self.g, self.b, self.a)
 
-    def mutate_positions(self, width, height):
+    def mutate_positions(self, width: int, height: int) -> None:
         self.x1 = self.x1 * random.uniform(0.85, 1.15) % width
         self.y1 = self.y1 * random.uniform(0.85, 1.15) % height
         self.x2 = self.x2 * random.uniform(0.85, 1.15) % width
@@ -64,13 +77,13 @@ class Triangle:
         self.x3 = self.x3 * random.uniform(0.85, 1.15) % width
         self.y3 = self.y3 * random.uniform(0.85, 1.15) % height
 
-    def mutate_color(self):
+    def mutate_color(self) -> None:
         self.r = self.r * random.uniform(0.85, 1.15) % 256
         self.g = self.g * random.uniform(0.85, 1.15) % 256
         self.b = self.b * random.uniform(0.85, 1.15) % 256
         self.a = min(1.0, self.a * random.uniform(0.85, 1.15))
 
-    def clamp(self, width, height):
+    def clamp(self, width: int, height: int) -> Triangle:
         """Devuelve un nuevo Triangle con todos los genes dentro de rango."""
         return Triangle(
             x1=max(0.0, min(self.x1, width)),
@@ -91,22 +104,22 @@ class Individual:
     N triángulos pintados en orden sobre un canvas blanco.
     """
 
-    def __init__(self, triangles, fitness=0.0):
+    def __init__(self, triangles: list[Triangle], fitness: float = 0.0):
         self.triangles = triangles
         self.fitness = fitness
 
     @property
-    def num_triangles(self):
+    def num_triangles(self) -> int:
         return len(self.triangles)
 
-    def to_genes(self):
+    def to_genes(self) -> list[float]:
         genes = []
         for t in self.triangles:
             genes.extend(t.to_genes())
         return genes
 
     @staticmethod
-    def from_genes(genes, num_triangles):
+    def from_genes(genes: list[float], num_triangles: int) -> Individual:
         p = GENES_PER_TRIANGLE
         triangles = [
             Triangle.from_genes(genes[i * p: (i + 1) * p])
@@ -115,25 +128,25 @@ class Individual:
         return Individual(triangles)
 
     @staticmethod
-    def random(num_triangles, width, height):
+    def random(num_triangles: int, width: int, height: int) -> Individual:
         return Individual(
             [Triangle.random(width, height) for _ in range(num_triangles)]
         )
 
-    def copy(self):
+    def copy(self) -> Individual:
         return deepcopy(self)
 
-    def __lt__(self, other):
+    def __lt__(self, other: Individual) -> bool:
         return self.fitness < other.fitness
 
-    def __le__(self, other):
+    def __le__(self, other: Individual) -> bool:
         return self.fitness <= other.fitness
 
-    def __gt__(self, other):
+    def __gt__(self, other: Individual) -> bool:
         return self.fitness > other.fitness
 
-    def __ge__(self, other):
+    def __ge__(self, other: Individual) -> bool:
         return self.fitness >= other.fitness
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"Individual(triangles={self.num_triangles}, fitness={self.fitness:.6f})"

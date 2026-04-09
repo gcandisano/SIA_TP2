@@ -1,15 +1,17 @@
+from __future__ import annotations
 import random
+from typing import Any
 from individual import Individual, Triangle
 
 
-def _mutate_triangle(triangle, width, height):
+def _mutate_triangle(triangle: Triangle, width: int, height: int) -> Triangle:
     t = triangle.copy()
     t.mutate_positions(width, height)
     t.mutate_color()
     return t
 
 
-def uniform(individual, width, height, mutation_rate=0.02, **_):
+def uniform(individual: Individual, width: int, height: int, mutation_rate: float = 0.02, **_kwargs: Any) -> Individual:
     """Cada triángulo se muta con probabilidad mutation_rate. Utilizamos mutación aleatoria."""
     triangles = [
         Triangle.random(width, height) if random.random() < mutation_rate else t
@@ -18,7 +20,7 @@ def uniform(individual, width, height, mutation_rate=0.02, **_):
     return Individual(triangles)
 
 
-def complete(individual, width, height, mutation_rate=0.5, **_):
+def complete(individual: Individual, width: int, height: int, mutation_rate: float = 0.5, **_kwargs: Any) -> Individual:
     """Con probabilidad mutation_rate, muta todos los triángulos. Utilizamos mutación de un 15% de los alelos."""
     if random.random() >= mutation_rate:
         return individual.copy()
@@ -26,13 +28,13 @@ def complete(individual, width, height, mutation_rate=0.5, **_):
     return Individual(triangles)
 
 
-def gene(individual, width, height, **_):
+def gene(individual: Individual, width: int, height: int, **_kwargs: Any) -> Individual:
     raise NotImplementedError
 
 
-def multigen(individual, width, height, num_genes=3, **_):
+def multigen(individual: Individual, width: int, height: int, num_genes: int = 3, **_kwargs: Any) -> Individual:
     raise NotImplementedError
 
 
-def non_uniform(individual, width, height, mutation_rate=0.02, generation=0, max_generations=1000, **_):
+def non_uniform(individual: Individual, width: int, height: int, mutation_rate: float = 0.02, generation: int = 0, max_generations: int = 1000, **_kwargs: Any) -> Individual:
     raise NotImplementedError

@@ -1,12 +1,14 @@
+from __future__ import annotations
 import math
 import random
+from individual import Individual
 
 
-def elite(population, k):
+def elite(population: list[Individual], k: int) -> list[Individual]:
     return sorted(population, reverse=True)[:k]
 
 
-def roulette(population, k):
+def roulette(population: list[Individual], k: int) -> list[Individual]:
     total = sum(ind.fitness for ind in population)
 
     p = [ind.fitness / total for ind in population]
@@ -28,7 +30,7 @@ def roulette(population, k):
     return selected
 
 
-def universal(population, k):
+def universal(population: list[Individual], k: int) -> list[Individual]:
     total = sum(ind.fitness for ind in population)
 
     p = [ind.fitness / total for ind in population]
@@ -52,7 +54,7 @@ def universal(population, k):
     return selected
 
 
-def boltzmann(population, k, temperature=1.0):
+def boltzmann(population: list[Individual], k: int, temperature: float = 1.0) -> list[Individual]:
     exp_vals = [math.exp(ind.fitness / temperature) for ind in population]
     avg_exp = sum(exp_vals) / len(exp_vals)
 
@@ -77,7 +79,7 @@ def boltzmann(population, k, temperature=1.0):
     return selected
 
 
-def tournament_deterministic(population, k, tournament_size=3):
+def tournament_deterministic(population: list[Individual], k: int, tournament_size: int = 3) -> list[Individual]:
     selected = []
     for _ in range(k):
         contestants = random.sample(population, min(tournament_size, len(population)))
@@ -85,7 +87,7 @@ def tournament_deterministic(population, k, tournament_size=3):
     return selected
 
 
-def tournament_probabilistic(population, k, threshold=0.75):
+def tournament_probabilistic(population: list[Individual], k: int, threshold: float = 0.75) -> list[Individual]:
     selected = []
     for _ in range(k):
         a, b = random.sample(population, 2)
@@ -96,7 +98,7 @@ def tournament_probabilistic(population, k, threshold=0.75):
     return selected
 
 
-def ranking(population, k):
+def ranking(population: list[Individual], k: int) -> list[Individual]:
     n = len(population)
 
     sorted_pop = sorted(population, reverse=True)

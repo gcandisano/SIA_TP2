@@ -1,9 +1,10 @@
+from __future__ import annotations
 import math
 import random
 from individual import Individual, GENES_PER_TRIANGLE
 
 
-def one_point(parent1, parent2):
+def one_point(parent1: Individual, parent2: Individual) -> tuple[Individual, Individual]:
     num_triangles = parent1.num_triangles
     cut = random.randint(1, num_triangles - 1) * GENES_PER_TRIANGLE
     genes1, genes2 = parent1.to_genes(), parent2.to_genes()
@@ -12,7 +13,7 @@ def one_point(parent1, parent2):
     return child1, child2
 
 
-def two_point(parent1, parent2):
+def two_point(parent1: Individual, parent2: Individual) -> tuple[Individual, Individual]:
     num_triangles = parent1.num_triangles
     genes1, genes2 = parent1.to_genes(), parent2.to_genes()
 
@@ -25,7 +26,7 @@ def two_point(parent1, parent2):
     return child1, child2
 
 
-def uniform(parent1, parent2, swap_prob=0.5):
+def uniform(parent1: Individual, parent2: Individual, swap_prob: float = 0.5) -> tuple[Individual, Individual]:
     num_triangles = parent1.num_triangles
     genes1, genes2 = parent1.to_genes(), parent2.to_genes()
     child1_genes, child2_genes = genes1[:], genes2[:]
@@ -40,7 +41,7 @@ def uniform(parent1, parent2, swap_prob=0.5):
     return Individual.from_genes(child1_genes, num_triangles), Individual.from_genes(child2_genes, num_triangles)
 
 
-def annular(parent1, parent2):
+def annular(parent1: Individual, parent2: Individual) -> tuple[Individual, Individual]:
     num_triangles = parent1.num_triangles
     genes1, genes2 = parent1.to_genes(), parent2.to_genes()
     child1_genes, child2_genes = genes1[:], genes2[:]
