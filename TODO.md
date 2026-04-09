@@ -14,7 +14,7 @@ Aunque se definió la estructura para los diferentes tipos de mutación, varios 
 
 Se han implementado la parada por máxima cantidad de generaciones y por contenido (alcanzar un `target_fitness`), pero la consigna pide evaluar métodos adicionales:
 
-- [ ] **Parada por Estructura**: Implementar lógica para cortar la ejecución del motor si la población no cambia o si el `best_fitness` no mejora significativamente durante una cantidad $N$ consecutiva de generaciones.
+- [X] **Parada por Estructura**: Implementar lógica para cortar la ejecución del motor si la población no cambia o si el `best_fitness` no mejora significativamente durante una cantidad $N$ consecutiva de generaciones.
 
 ## 3. 📊 Métricas y Análisis (`main.py`)
 
