@@ -13,15 +13,16 @@ def traditional(population: list[Individual], offspring: list[Individual]) -> li
 
 def young_bias(population: list[Individual], offspring: list[Individual]) -> list[Individual]:
     """
-    Aplica supervivencia exclusiva: la nueva generación se compone solo de hijos.
-    Requiere al menos N hijos, donde N es el tamaño de la población original.
+    Aplica supervivencia exclusiva:
+    - K > N: selecciona los N mejores de los K hijos.
+    - K ≤ N: toma los K hijos + los (N-K) mejores de la generación actual.
     """
     n = len(population)
     k = len(offspring)
 
-    if k < n:
-        raise ValueError(
-            f"Supervivencia exclusiva requiere al menos {n} hijos, pero se recibieron {k}."
-        )
+    if k > n:
+        return sorted(offspring, key=lambda ind: ind.fitness, reverse=True)[:n]
 
-    return sorted(offspring, key=lambda ind: ind.fitness, reverse=True)[:n]
+    remaining = n - k
+    best_from_population = sorted(population, key=lambda ind: ind.fitness, reverse=True)[:remaining]
+    return offspring + best_from_population
