@@ -16,6 +16,7 @@ El objetivo es encontrar la mejor combinación de triángulos (posición de vér
 - **Bibliotecas**:
   - `numpy`: Para cálculos matriciales.
   - `pillow` (PIL): Para el renderizado y procesamiento de imágenes.
+  - `matplotlib`: Para generar el gráfico de evolución del fitness.
 
 ## ⚙️ Instalación
 
@@ -70,7 +71,10 @@ o si no usas uv:
 python main.py --help
 ```
 
-El resultado final se guardará en la carpeta `output/result.png`.
+Los resultados se guardarán en la carpeta `output/`:
+
+- `result.png`: mejor aproximación final.
+- `best_fitness.png`: evolución del mejor fitness por generación.
 
 ## 📄 Configuración (`config.json`)
 
@@ -83,6 +87,8 @@ El archivo de configuración permite ajustar todos los parámetros del algoritmo
   "population_size": 100,
   "max_generations": 2000,
   "target_fitness": 0.95,
+  "stagnation_generations": 150,
+  "stagnation_epsilon": 1e-6,
   "selection": { "method": "elite", "k": 50 },
   "crossover": { "method": "one_point" },
   "mutation": { "method": "uniform", "mutation_rate": 0.05 },
@@ -112,14 +118,22 @@ El archivo de configuración permite ajustar todos los parámetros del algoritmo
 
 ### Mutación
 
-- **Uniforme (`uniform`)**: Mutación aleatoria de un triángulo con probabilidad `mutation_rate`.
-- **Completa (`complete`)**: Re-estimación total de un individuo.
-- _Pendientes: `gene`, `multigen`, `non_uniform` (definidos en estructura pero no implementados)._
+- **Gen (`gene`)**: Con probabilidad `mutation_rate`, muta un único alelo en un triángulo elegido al azar.
+- **MultiGen (`multigen`)**: Muta `num_genes` alelos (con posible reemplazo de triángulos).
+- **Uniforme (`uniform`)**: Cada triángulo se reemplaza por uno aleatorio con probabilidad `mutation_rate`.
+- **No uniforme (`non_uniform`)**: Similar a `gene`, pero la magnitud del cambio decae con la generación.
+- **Completa (`complete`)**: Con probabilidad `mutation_rate`, muta todos los triángulos del individuo.
 
 ### Reemplazo
 
-- **Tradicional**: Selección de los mejores de la unión de padres e hijos.
-- **Young Bias**: Prioriza a los descendientes sobre los padres.
+- **Tradicional (`traditional`)**: Supervivencia aditiva. Selecciona los mejores de la unión padres + hijos.
+- **Young Bias (`young_bias`)**: Prioriza descendientes. Si `K > N`, selecciona `N` hijos; si `K <= N`, toma `K` hijos y completa con `N-K` padres.
+
+### Criterios de parada
+
+- **Máxima cantidad de generaciones** (`max_generations`).
+- **Fitness objetivo** (`target_fitness`).
+- **Estancamiento** (`stagnation_generations` y `stagnation_epsilon`).
 
 ## 📂 Estructura del Proyecto
 
