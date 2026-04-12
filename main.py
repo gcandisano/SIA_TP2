@@ -143,6 +143,36 @@ def run(config_path="config.json"):
     save_metrics_csv(best_fitness_per_generation, avg_fitness_per_generation, diversity_per_generation)
     render(best, width, height).convert("RGB").save("output/result.png")
     print("Imagen guardada en output/result.png")
+    save_triangles(best)
+
+def save_triangles(individual: Individual) -> None:
+    triangles_path = "output/triangles.json"
+    data = {
+        "num_triangles": individual.num_triangles,
+        "fitness": individual.fitness,
+        "triangles": [
+            {
+                "index": i,
+                "vertices": {
+                    "x1": round(t.x1, 4), "y1": round(t.y1, 4),
+                    "x2": round(t.x2, 4), "y2": round(t.y2, 4),
+                    "x3": round(t.x3, 4), "y3": round(t.y3, 4),
+                },
+                "color": {
+                    "r": round(t.r, 4),
+                    "g": round(t.g, 4),
+                    "b": round(t.b, 4),
+                    "a": round(t.a, 4),
+                    "hex": "#{:02x}{:02x}{:02x}".format(int(t.r), int(t.g), int(t.b)),
+                },
+            }
+            for i, t in enumerate(individual.triangles)
+        ],
+    }
+    with open(triangles_path, "w") as f:
+        json.dump(data, f, indent=2)
+    print(f"Triángulos guardados en {triangles_path}")
+
 
 def _compute_diversity(population: list[Individual]) -> float:
     """Diversidad genética: desviación estándar media de los genes de la población."""
