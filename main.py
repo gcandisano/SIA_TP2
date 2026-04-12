@@ -3,6 +3,7 @@ import json
 import os
 import random
 import sys
+
 import matplotlib.pyplot as plt
 import numpy as np
 from PIL import Image
@@ -133,6 +134,7 @@ def run(config_path="config.json"):
     render(best, width, height).convert("RGB").save("output/result.png")
     print("Imagen guardada en output/result.png")
 
+
 def plot_fitness(best_fitness_per_generation: list[float]):
     fitness_plot_path = "output/best_fitness.png"
     gens = range(len(best_fitness_per_generation))
@@ -144,6 +146,7 @@ def plot_fitness(best_fitness_per_generation: list[float]):
     fig.tight_layout()
     fig.savefig(fitness_plot_path, dpi=150)
     plt.close(fig)
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(

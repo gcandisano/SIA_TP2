@@ -135,12 +135,84 @@ El archivo de configuración permite ajustar todos los parámetros del algoritmo
 - **Fitness objetivo** (`target_fitness`).
 - **Estancamiento** (`stagnation_generations` y `stagnation_epsilon`).
 
+## 📊 Análisis Comparativo (`analysis.py`)
+
+El script `analysis.py` ejecuta un análisis comparativo completo de todos los operadores del AG y genera gráficos listos para presentación. Lee su configuración desde `config-analysis.json`.
+
+### Ejecución
+
+```bash
+# Con uv
+uv run analysis.py
+
+# Con uv y archivo de configuración personalizado
+uv run analysis.py --config ruta/a/config-analysis.json
+
+# Con Python (venv activo)
+python analysis.py
+
+# Con archivo de configuración personalizado
+python analysis.py --config ruta/a/config-analysis.json
+```
+
+### Configuración (`config-analysis.json`)
+
+Los parámetros se definen en el archivo `config-analysis.json`:
+
+| Parámetro                               | Valor por defecto             | Descripción                               |
+| --------------------------------------- | ----------------------------- | ----------------------------------------- |
+| `IMAGE_PATH`                            | `"assets/argentina_flag.png"` | Imagen objetivo para la aproximación      |
+| `BASE_CONFIG["num_triangles"]`          | `50`                          | Cantidad de triángulos por individuo      |
+| `BASE_CONFIG["population_size"]`        | `50`                          | Tamaño de la población                    |
+| `BASE_CONFIG["max_generations"]`        | `300`                         | Máximo de generaciones por corrida        |
+| `BASE_CONFIG["stagnation_generations"]` | `150`                         | Generaciones sin mejora para detener      |
+| `BASE_CONFIG["stagnation_epsilon"]`     | `1e-6`                        | Umbral mínimo de mejora                   |
+| `NUM_RUNS_ERROR_BARS`                   | `5`                           | Cantidad de corridas para barras de error |
+| `BASE_SEED`                             | `42`                          | Semilla base para reproducibilidad        |
+
+### Parámetros fijos por análisis
+
+Cada análisis varía **un solo tipo de operador** y mantiene el resto fijo:
+
+| Análisis      | Parámetros fijos                                                                |
+| ------------- | ------------------------------------------------------------------------------- |
+| **Selección** | Cruza: `one_point` · Mutación: `uniform` (tasa=0.01) · Reemplazo: `traditional` |
+| **Reemplazo** | Selección: `elite` · Cruza: `one_point` · Mutación: `uniform` (tasa=0.01)       |
+| **Cruza**     | Selección: `elite` · Mutación: `uniform` (tasa=0.01) · Reemplazo: `traditional` |
+| **Mutación**  | Selección: `elite` · Cruza: `one_point` · Reemplazo: `traditional`              |
+
+### Salida
+
+Los resultados se guardan en `output/analysis/` con la siguiente estructura:
+
+```text
+output/analysis/
+├── selection/
+│   ├── selection_evolucion_temporal.png   # Curvas de fitness por método
+│   ├── selection_delta_fitness.png        # Barras Δfitness con error
+│   └── selection_resultado_*.png          # Imagen resultado por método
+├── replacement/
+│   └── ...
+├── crossover/
+│   └── ...
+└── mutation/
+    └── ...
+```
+
+Cada categoría genera:
+
+1. **Evolución temporal**: gráfico de líneas con el fitness a lo largo de las generaciones (1 corrida representativa).
+2. **Δ fitness**: gráfico de barras con la mejora de fitness (final − inicial) promediada sobre múltiples corridas, con barras de error (desviación estándar).
+3. **Imágenes resultado**: renderizado del mejor individuo obtenido con cada método.
+
 ## 📂 Estructura del Proyecto
 
 ```text
 .
 ├── main.py              # Punto de entrada de la aplicación
-├── config.json          # Archivo de configuración de parámetros
+├── analysis.py          # Script de análisis comparativo
+├── config.json          # Configuración del motor principal
+├── config-analysis.json # Configuración del análisis comparativo
 ├── pyproject.toml       # Definición de dependencias
 ├── assets/              # Carpeta de imágenes de entrada
 ├── output/              # Resultados generados
