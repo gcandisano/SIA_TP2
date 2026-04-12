@@ -1,4 +1,5 @@
 import argparse
+import csv
 import json
 import os
 import random
@@ -15,6 +16,7 @@ import mutation as mut
 import replacement as rep
 import selection as sel
 from fitness import evaluate_population, render
+from individual import Individual
 from population import initialize
 
 
@@ -70,7 +72,10 @@ def run(config_path="config.json"):
     evaluate_population(population, target, width, height)
 
     best = max(population)
+    fitness_values = [ind.fitness for ind in population]
     best_fitness_per_generation = [best.fitness]
+    avg_fitness_per_generation = [float(np.mean(fitness_values))]
+    diversity_per_generation = [_compute_diversity(population)]
     print(f"Gen 0 | best fitness: {best.fitness:.6f}")
 
     stagnation_n = cfg.get("stagnation_generations")
@@ -107,7 +112,10 @@ def run(config_path="config.json"):
         population = replace(population, offspring)
 
         best = max(population)
+        fitness_values = [ind.fitness for ind in population]
         best_fitness_per_generation.append(best.fitness)
+        avg_fitness_per_generation.append(float(np.mean(fitness_values)))
+        diversity_per_generation.append(_compute_diversity(population))
         print(f"Gen {generation} | best fitness: {best.fitness:.6f}")
 
         if best.fitness >= cfg.get("target_fitness", 1.0):
@@ -130,22 +138,66 @@ def run(config_path="config.json"):
                     break
 
     os.makedirs("output", exist_ok=True)
-    plot_fitness(best_fitness_per_generation)
+    plot_fitness(best_fitness_per_generation, avg_fitness_per_generation)
+    plot_diversity(diversity_per_generation)
+    save_metrics_csv(best_fitness_per_generation, avg_fitness_per_generation, diversity_per_generation)
     render(best, width, height).convert("RGB").save("output/result.png")
     print("Imagen guardada en output/result.png")
 
+def _compute_diversity(population: list[Individual]) -> float:
+    """Diversidad genética: desviación estándar media de los genes de la población."""
+    genes = np.array([ind.to_genes() for ind in population])
+    return float(np.mean(np.std(genes, axis=0)))
 
-def plot_fitness(best_fitness_per_generation: list[float]):
+
+def plot_fitness(
+    best_fitness_per_generation: list[float],
+    avg_fitness_per_generation: list[float],
+):
     fitness_plot_path = "output/best_fitness.png"
     gens = range(len(best_fitness_per_generation))
     fig, ax = plt.subplots(figsize=(8, 4))
-    ax.plot(gens, best_fitness_per_generation, color="C0")
+    ax.plot(gens, best_fitness_per_generation, color="C0", label="Mejor fitness")
+    ax.plot(gens, avg_fitness_per_generation, color="C1", label="Fitness promedio", alpha=0.7)
     ax.set_xlabel("Generación")
-    ax.set_ylabel("Mejor fitness")
+    ax.set_ylabel("Fitness")
+    ax.legend()
     ax.grid(True, alpha=0.3)
     fig.tight_layout()
     fig.savefig(fitness_plot_path, dpi=150)
     plt.close(fig)
+
+
+def plot_diversity(diversity_per_generation: list[float]):
+    diversity_plot_path = "output/diversity.png"
+    gens = range(len(diversity_per_generation))
+    fig, ax = plt.subplots(figsize=(8, 4))
+    ax.plot(gens, diversity_per_generation, color="C2")
+    ax.set_xlabel("Generación")
+    ax.set_ylabel("Diversidad genética (σ media de genes)")
+    ax.grid(True, alpha=0.3)
+    fig.tight_layout()
+    fig.savefig(diversity_plot_path, dpi=150)
+    plt.close(fig)
+
+
+def save_metrics_csv(
+    best_fitness: list[float],
+    avg_fitness: list[float],
+    diversity: list[float],
+):
+    csv_path = "output/metrics.csv"
+    with open(csv_path, "w", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow(["generation", "best_fitness", "avg_fitness", "diversity"])
+        for gen in range(len(best_fitness)):
+            writer.writerow([
+                gen,
+                f"{best_fitness[gen]:.8f}",
+                f"{avg_fitness[gen]:.8f}",
+                f"{diversity[gen]:.8f}",
+            ])
+    print(f"Métricas guardadas en {csv_path}")
 
 
 if __name__ == "__main__":

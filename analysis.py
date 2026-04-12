@@ -17,6 +17,7 @@ Todos los textos en español.  Sin títulos.  Fuentes grandes para diapositivas.
 
 import argparse
 import copy
+import csv
 import json
 import os
 import random
@@ -77,6 +78,14 @@ REPLACEMENT_METHODS = {
     "young_bias": rep.young_bias,
 }
 
+NUM_TRIANGLES_METHODS = {
+    "10_triangulos": 10,
+    "25_triangulos": 25,
+    "50_triangulos": 50,
+    "75_triangulos": 75,
+    "100_triangulos": 100,
+}
+
 # ─── Estilo global de matplotlib ─────────────────────────────────────────────
 plt.rcParams.update(
     {
@@ -112,6 +121,12 @@ COLORS = [
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
+def _compute_diversity(population: list[Individual]) -> float:
+    """Diversidad genética: desviación estándar de los genotipos aplanados."""
+    genes = np.array([ind.to_genes() for ind in population])
+    return float(np.mean(np.std(genes, axis=0)))
+
+
 def run_ga(
     target: np.ndarray,
     width: int,
@@ -122,8 +137,8 @@ def run_ga(
     replace_fn,
     config: dict,
     seed: int | None = None,
-) -> tuple[list[float], Individual]:
-    """Ejecuta el AG y devuelve (historial_fitness, mejor_individuo)."""
+) -> tuple[list[float], list[float], list[float], Individual]:
+    """Ejecuta el AG y devuelve (best_history, avg_history, diversity_history, mejor_individuo)."""
     if seed is not None:
         random.seed(seed)
         np.random.seed(seed)
@@ -142,7 +157,10 @@ def run_ga(
     evaluate_population(population, target, width, height)
 
     best = max(population)
-    history = [best.fitness]
+    fitness_values = [ind.fitness for ind in population]
+    best_history = [best.fitness]
+    avg_history = [float(np.mean(fitness_values))]
+    diversity_history = [_compute_diversity(population)]
     best_ever = best.fitness
     gens_without_gain = 0
 
@@ -172,7 +190,10 @@ def run_ga(
         population = replace_fn(population, offspring)
 
         best = max(population)
-        history.append(best.fitness)
+        fitness_values = [ind.fitness for ind in population]
+        best_history.append(best.fitness)
+        avg_history.append(float(np.mean(fitness_values)))
+        diversity_history.append(_compute_diversity(population))
 
         if use_stagnation:
             if best.fitness > best_ever + stagnation_eps:
@@ -186,7 +207,7 @@ def run_ga(
                     break
 
     best_overall = max(population)
-    return history, best_overall
+    return best_history, avg_history, diversity_history, best_overall
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -208,6 +229,50 @@ def plot_temporal_evolution(
     ax.set_xlabel("Generación")
     ax.set_ylabel("Mejor fitness")
     ax.legend(loc="lower right", framealpha=0.9)
+    ax.grid(True, alpha=0.25)
+
+    fig.tight_layout()
+    fig.savefig(save_path)
+    plt.close(fig)
+    print(f"  ✓ Guardado: {save_path}")
+
+
+def plot_avg_fitness_evolution(
+    avg_histories: dict[str, list[float]],
+    save_path: str,
+):
+    """Gráfico de líneas: evolución temporal del fitness promedio por método."""
+    fig, ax = plt.subplots(figsize=(12, 7))
+
+    for idx, (name, hist) in enumerate(avg_histories.items()):
+        color = COLORS[idx % len(COLORS)]
+        ax.plot(range(len(hist)), hist, label=name, color=color, linewidth=2)
+
+    ax.set_xlabel("Generación")
+    ax.set_ylabel("Fitness promedio")
+    ax.legend(loc="lower right", framealpha=0.9)
+    ax.grid(True, alpha=0.25)
+
+    fig.tight_layout()
+    fig.savefig(save_path)
+    plt.close(fig)
+    print(f"  ✓ Guardado: {save_path}")
+
+
+def plot_diversity_evolution(
+    diversity_histories: dict[str, list[float]],
+    save_path: str,
+):
+    """Gráfico de líneas: evolución temporal de la diversidad genética por método."""
+    fig, ax = plt.subplots(figsize=(12, 7))
+
+    for idx, (name, hist) in enumerate(diversity_histories.items()):
+        color = COLORS[idx % len(COLORS)]
+        ax.plot(range(len(hist)), hist, label=name, color=color, linewidth=2)
+
+    ax.set_xlabel("Generación")
+    ax.set_ylabel("Diversidad genética (σ media de genes)")
+    ax.legend(loc="upper right", framealpha=0.9)
     ax.grid(True, alpha=0.25)
 
     fig.tight_layout()
@@ -264,6 +329,50 @@ def save_result_image(
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# Exportación de métricas a CSV
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+def save_histories_csv(
+    best_histories: dict[str, list[float]],
+    avg_histories: dict[str, list[float]],
+    diversity_histories: dict[str, list[float]],
+    save_path: str,
+):
+    """Exporta historial de métricas por generación a CSV."""
+    with open(save_path, "w", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow(["method", "generation", "best_fitness", "avg_fitness", "diversity"])
+        for name in best_histories:
+            best_h = best_histories[name]
+            avg_h = avg_histories[name]
+            div_h = diversity_histories[name]
+            for gen in range(len(best_h)):
+                writer.writerow([
+                    name,
+                    gen,
+                    f"{best_h[gen]:.8f}",
+                    f"{avg_h[gen]:.8f}",
+                    f"{div_h[gen]:.8f}",
+                ])
+    print(f"  ✓ Guardado: {save_path}")
+
+
+def save_deltas_csv(
+    deltas: dict[str, list[float]],
+    save_path: str,
+):
+    """Exporta Δfitness de múltiples corridas a CSV."""
+    with open(save_path, "w", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow(["method", "run", "delta_fitness"])
+        for name, values in deltas.items():
+            for run_idx, delta in enumerate(values):
+                writer.writerow([name, run_idx + 1, f"{delta:.8f}"])
+    print(f"  ✓ Guardado: {save_path}")
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # Bloque principal de análisis
 # ═══════════════════════════════════════════════════════════════════════════════
 
@@ -289,13 +398,15 @@ def analyse_category(
     print(f"  Categoría: {category.upper()}")
     print(f"{'═' * 60}")
 
-    histories: dict[str, list[float]] = {}
+    best_histories: dict[str, list[float]] = {}
+    avg_histories: dict[str, list[float]] = {}
+    diversity_histories: dict[str, list[float]] = {}
     best_individuals: dict[str, object] = {}
 
     for name, method in methods.items():
         print(f"  ▸ Corrida representativa: {name} …")
         select_fn, cross_fn, mutate_fn, replace_fn, cfg = build_config(name, method)
-        hist, best_ind = run_ga(
+        best_h, avg_h, div_h, best_ind = run_ga(
             target,
             width,
             height,
@@ -306,14 +417,36 @@ def analyse_category(
             cfg,
             seed=BASE_SEED,
         )
-        histories[name] = hist
+        best_histories[name] = best_h
+        avg_histories[name] = avg_h
+        diversity_histories[name] = div_h
         best_individuals[name] = best_ind
-        print(f"    fitness final = {hist[-1]:.6f}")
+        print(f"    fitness final = {best_h[-1]:.6f}")
 
-    # Gráfico de evolución temporal
+    # Gráfico de evolución temporal (mejor fitness)
     plot_temporal_evolution(
-        histories,
+        best_histories,
         os.path.join(out_dir, f"{category}_evolucion_temporal.png"),
+    )
+
+    # Gráfico de evolución temporal (fitness promedio)
+    plot_avg_fitness_evolution(
+        avg_histories,
+        os.path.join(out_dir, f"{category}_fitness_promedio.png"),
+    )
+
+    # Gráfico de evolución temporal (diversidad genética)
+    plot_diversity_evolution(
+        diversity_histories,
+        os.path.join(out_dir, f"{category}_diversidad_genetica.png"),
+    )
+
+    # Exportar historiales a CSV
+    save_histories_csv(
+        best_histories,
+        avg_histories,
+        diversity_histories,
+        os.path.join(out_dir, f"{category}_historiales.csv"),
     )
 
     # Imágenes del mejor resultado por método
@@ -334,7 +467,7 @@ def analyse_category(
         seed = BASE_SEED + run_idx + 1
         for name, method in methods.items():
             select_fn, cross_fn, mutate_fn, replace_fn, cfg = build_config(name, method)
-            hist, _ = run_ga(
+            best_h, _, _, _ = run_ga(
                 target,
                 width,
                 height,
@@ -345,13 +478,19 @@ def analyse_category(
                 cfg,
                 seed=seed,
             )
-            delta = hist[-1] - hist[0]
+            delta = best_h[-1] - best_h[0]
             deltas[name].append(delta)
         print(f"    corrida {run_idx + 1}/{NUM_RUNS_ERROR_BARS} completada")
 
     plot_fitness_delta_bars(
         deltas,
         os.path.join(out_dir, f"{category}_delta_fitness.png"),
+    )
+
+    # Exportar deltas a CSV
+    save_deltas_csv(
+        deltas,
+        os.path.join(out_dir, f"{category}_deltas.csv"),
     )
 
     print(f"  ✓ Categoría {category} completa.\n")
@@ -437,6 +576,23 @@ def build_mutation(name, method):
     return select_fn, cross_fn, mutate_fn, replace_fn, cfg
 
 
+# ── Cantidad de Triángulos ───────────────────────────────────────────────────
+
+
+def build_num_triangles(name, method):
+    """
+    Varía el número de triángulos N.
+    Fijo: selección=élite · cruza=un punto · mutación=uniforme · reemplazo=tradicional
+    """
+    cfg = _base_cfg()
+    cfg["num_triangles"] = method
+    select_fn = sel.elite
+    cross_fn = cx.one_point
+    mutate_fn = mut.uniform
+    replace_fn = rep.traditional
+    return select_fn, cross_fn, mutate_fn, replace_fn, cfg
+
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # Main
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -491,6 +647,16 @@ def main():
         width,
         height,
         build_mutation,
+    )
+
+    # ── 5. Cantidad de Triángulos ────────────────────────────────────────
+    analyse_category(
+        "num_triangles",
+        NUM_TRIANGLES_METHODS,
+        target,
+        width,
+        height,
+        build_num_triangles,
     )
 
     print("\n" + "═" * 60)
