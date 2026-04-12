@@ -1,7 +1,6 @@
 from __future__ import annotations
-import random
-from copy import deepcopy
 
+import random
 
 GENES_PER_TRIANGLE: int = 10
 
@@ -145,16 +144,16 @@ class Individual:
     def __init__(self, triangles: list[Triangle], fitness: float = 0.0):
         self.triangles = triangles
         self.fitness = fitness
+        self._genes: list[float] | None = None
 
     @property
     def num_triangles(self) -> int:
         return len(self.triangles)
 
     def to_genes(self) -> list[float]:
-        genes = []
-        for t in self.triangles:
-            genes.extend(t.to_genes())
-        return genes
+        if self._genes is None:
+            self._genes = [gene for t in self.triangles for gene in t.to_genes()]
+        return self._genes
 
     @staticmethod
     def from_genes(genes: list[float], num_triangles: int) -> Individual:
@@ -172,7 +171,7 @@ class Individual:
         )
 
     def copy(self) -> Individual:
-        return deepcopy(self)
+        return Individual([t.copy() for t in self.triangles], fitness=self.fitness)
 
     def __lt__(self, other: Individual) -> bool:
         return self.fitness < other.fitness
