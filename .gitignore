@@ -1,6 +1,7 @@
 __pycache__/
 *.pyc
 output/
+output*/
 venv/
 .DS_Store
 .mypy_cache

@@ -1,16 +1,16 @@
 {
-  "image_path": "assets/chrome.png",
-  "num_triangles": 250,
-  "population_size": 200,
-  "max_generations": 15000,
+  "image_path": "assets/argentina_flag.png",
+  "num_triangles": 150,
+  "population_size": 150,
+  "max_generations": 10000,
   "target_fitness": 0.999,
-  "stagnation_generations": 2000,
+  "stagnation_generations": 1500,
   "stagnation_epsilon": 1e-7,
 
   "selection": {
     "method": "tournament_det",
-    "k": 200,
-    "tournament_size": 6
+    "k": 150,
+    "tournament_size": 5
   },
 
   "crossover": {
@@ -20,8 +20,8 @@
 
   "mutation": {
     "method": "non_uniform",
-    "mutation_rate": 0.1,
-    "b": 6.0
+    "mutation_rate": 0.12,
+    "b": 5.0
   },
 
   "replacement": {

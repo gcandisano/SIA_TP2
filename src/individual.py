@@ -37,16 +37,32 @@ class Triangle:
         self.a = a
 
     def to_genes(self) -> list[float]:
-        return [self.x1, self.y1, self.x2, self.y2,
-                self.x3, self.y3, self.r, self.g, self.b, self.a]
+        return [
+            self.x1,
+            self.y1,
+            self.x2,
+            self.y2,
+            self.x3,
+            self.y3,
+            self.r,
+            self.g,
+            self.b,
+            self.a,
+        ]
 
     @staticmethod
     def from_genes(genes: list[float]) -> Triangle:
         return Triangle(
-            genes[0], genes[1],
-            genes[2], genes[3],
-            genes[4], genes[5],
-            genes[6], genes[7], genes[8], genes[9],
+            genes[0],
+            genes[1],
+            genes[2],
+            genes[3],
+            genes[4],
+            genes[5],
+            genes[6],
+            genes[7],
+            genes[8],
+            genes[9],
         )
 
     @staticmethod
@@ -65,60 +81,69 @@ class Triangle:
         )
 
     def copy(self) -> Triangle:
-        return Triangle(self.x1, self.y1, self.x2, self.y2,
-                        self.x3, self.y3, self.r, self.g, self.b, self.a)
+        return Triangle(
+            self.x1,
+            self.y1,
+            self.x2,
+            self.y2,
+            self.x3,
+            self.y3,
+            self.r,
+            self.g,
+            self.b,
+            self.a,
+        )
 
     def mutate_positions(self, width: int, height: int) -> None:
-        self.x1 = self.x1 * random.uniform(0.85, 1.15) % width
-        self.y1 = self.y1 * random.uniform(0.85, 1.15) % height
-        self.x2 = self.x2 * random.uniform(0.85, 1.15) % width
-        self.y2 = self.y2 * random.uniform(0.85, 1.15) % height
-        self.x3 = self.x3 * random.uniform(0.85, 1.15) % width
-        self.y3 = self.y3 * random.uniform(0.85, 1.15) % height
+        dx = width * 0.1
+        dy = height * 0.1
+        self.x1 = max(0, min(width, self.x1 + random.uniform(-dx, dx)))
+        self.y1 = max(0, min(height, self.y1 + random.uniform(-dy, dy)))
+        self.x2 = max(0, min(width, self.x2 + random.uniform(-dx, dx)))
+        self.y2 = max(0, min(height, self.y2 + random.uniform(-dy, dy)))
+        self.x3 = max(0, min(width, self.x3 + random.uniform(-dx, dx)))
+        self.y3 = max(0, min(height, self.y3 + random.uniform(-dy, dy)))
 
     def mutate_one_gene(self, width: int, height: int, strength: float = 1.0) -> None:
-        """Muta exactamente un alelo (un gen de los 10 del triángulo)"""
+        """Muta exactamente un alelo (un gen de los 10 del triángulo) con cambios aditivos y clamping."""
         strength = max(0.0, strength)
         gene_index: int = random.randint(0, 9)
-        span = 0.15 * strength
-        lo, hi = max(0.0, 1.0 - span), 1.0 + span
-        factor = random.uniform(lo, hi)
 
-        if gene_index == 0:
-            self.x1 = self.x1 * factor % width
-            return
-        if gene_index == 1:
-            self.y1 = self.y1 * factor % height
-            return
-        if gene_index == 2:
-            self.x2 = self.x2 * factor % width
-            return
-        if gene_index == 3:
-            self.y2 = self.y2 * factor % height
-            return
-        if gene_index == 4:
-            self.x3 = self.x3 * factor % width
-            return
-        if gene_index == 5:
-            self.y3 = self.y3 * factor % height
-            return
-        if gene_index == 6:
-            self.r = self.r * factor % 256
-            return
-        if gene_index == 7:
-            self.g = self.g * factor % 256
-            return
-        if gene_index == 8:
-            self.b = self.b * factor % 256
-            return
-            
-        self.a = max(0.1, min(1.0, self.a * factor))
+        # Ajustamos el rango de mutación según el tipo de gen
+        if gene_index < 6:  # Coordenadas (x, y)
+            if gene_index % 2 == 0:  # X-coordinates (0, 2, 4)
+                delta = random.uniform(-width * 0.1, width * 0.1) * strength
+                if gene_index == 0:
+                    self.x1 = max(0, min(width, self.x1 + delta))
+                elif gene_index == 2:
+                    self.x2 = max(0, min(width, self.x2 + delta))
+                elif gene_index == 4:
+                    self.x3 = max(0, min(width, self.x3 + delta))
+            else:  # Y-coordinates (1, 3, 5)
+                delta = random.uniform(-height * 0.1, height * 0.1) * strength
+                if gene_index == 1:
+                    self.y1 = max(0, min(height, self.y1 + delta))
+                elif gene_index == 3:
+                    self.y2 = max(0, min(height, self.y2 + delta))
+                elif gene_index == 5:
+                    self.y3 = max(0, min(height, self.y3 + delta))
+        elif gene_index < 9:  # Colores (r, g, b)
+            delta = random.uniform(-40, 40) * strength
+            if gene_index == 6:
+                self.r = max(0, min(255, self.r + delta))
+            elif gene_index == 7:
+                self.g = max(0, min(255, self.g + delta))
+            elif gene_index == 8:
+                self.b = max(0, min(255, self.b + delta))
+        else:  # Alpha (a)
+            delta = random.uniform(-0.1, 0.1) * strength
+            self.a = max(0.05, min(1.0, self.a + delta))
 
     def mutate_color(self) -> None:
-        self.r = self.r * random.uniform(0.85, 1.15) % 256
-        self.g = self.g * random.uniform(0.85, 1.15) % 256
-        self.b = self.b * random.uniform(0.85, 1.15) % 256
-        self.a = min(1.0, self.a * random.uniform(0.85, 1.15))
+        self.r = max(0, min(255, self.r + random.uniform(-30, 30)))
+        self.g = max(0, min(255, self.g + random.uniform(-30, 30)))
+        self.b = max(0, min(255, self.b + random.uniform(-30, 30)))
+        self.a = max(0.05, min(1.0, self.a + random.uniform(-0.1, 0.1)))
 
     def clamp(self, width: int, height: int) -> Triangle:
         """Devuelve un nuevo Triangle con todos los genes dentro de rango."""
@@ -141,10 +166,15 @@ class Individual:
     N triángulos pintados en orden sobre un canvas blanco.
     """
 
-    def __init__(self, triangles: list[Triangle], fitness: float = 0.0):
+    def __init__(
+        self,
+        triangles: list[Triangle],
+        fitness: float = 0.0,
+        genes: list[float] | None = None,
+    ):
         self.triangles = triangles
         self.fitness = fitness
-        self._genes: list[float] | None = None
+        self._genes = genes  # Pass existing genes to pre-populate cache
 
     @property
     def num_triangles(self) -> int:
@@ -159,10 +189,11 @@ class Individual:
     def from_genes(genes: list[float], num_triangles: int) -> Individual:
         p = GENES_PER_TRIANGLE
         triangles = [
-            Triangle.from_genes(genes[i * p: (i + 1) * p])
+            Triangle.from_genes(genes[i * p : (i + 1) * p])
             for i in range(num_triangles)
         ]
-        return Individual(triangles)
+        # Pre-populate the cache since we already have the genes
+        return Individual(triangles, genes=genes)
 
     @staticmethod
     def random(num_triangles: int, width: int, height: int) -> Individual:
@@ -171,7 +202,9 @@ class Individual:
         )
 
     def copy(self) -> Individual:
-        return Individual([t.copy() for t in self.triangles], fitness=self.fitness)
+        # Shallow copy of the list is enough if we treat Triangle objects as semi-immutable
+        # when they are shared between individuals.
+        return Individual(self.triangles[:], fitness=self.fitness)
 
     def __lt__(self, other: Individual) -> bool:
         return self.fitness < other.fitness

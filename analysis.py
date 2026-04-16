@@ -121,10 +121,13 @@ COLORS = [
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
-def _compute_diversity(population: list[Individual]) -> float:
-    """Diversidad genética: desviación estándar de los genotipos aplanados."""
+def _compute_diversity(population: list[Individual], norm_vector: np.ndarray) -> float:
+    """Diversidad genética normalizada: desviación estándar media de los genes normalizados [0,1]."""
+    if not population:
+        return 0.0
     genes = np.array([ind.to_genes() for ind in population])
-    return float(np.mean(np.std(genes, axis=0)))
+    normalized_genes = genes / norm_vector
+    return float(np.mean(np.std(normalized_genes, axis=0)))
 
 
 def run_ga(
@@ -153,6 +156,10 @@ def run_ga(
     stagnation_eps = config.get("stagnation_epsilon", 1e-6)
     use_stagnation = stagnation_n is not None and stagnation_n > 0
 
+    # Pre-calculamos el vector de normalización para la diversidad
+    ranges = np.array([width, height, width, height, width, height, 255.0, 255.0, 255.0, 1.0])
+    norm_vector = np.tile(ranges, num_tri)
+
     population = initialize(pop_size, num_tri, width, height)
     evaluate_population(population, target, width, height)
 
@@ -160,7 +167,7 @@ def run_ga(
     fitness_values = [ind.fitness for ind in population]
     best_history = [best.fitness]
     avg_history = [float(np.mean(fitness_values))]
-    diversity_history = [_compute_diversity(population)]
+    diversity_history = [_compute_diversity(population, norm_vector)]
     best_ever = best.fitness
     gens_without_gain = 0
 
@@ -193,7 +200,10 @@ def run_ga(
         fitness_values = [ind.fitness for ind in population]
         best_history.append(best.fitness)
         avg_history.append(float(np.mean(fitness_values)))
-        diversity_history.append(_compute_diversity(population))
+        if gen % 10 == 0:
+            diversity_history.append(_compute_diversity(population, norm_vector))
+        else:
+            diversity_history.append(diversity_history[-1])
 
         if use_stagnation:
             if best.fitness > best_ever + stagnation_eps:

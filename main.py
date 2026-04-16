@@ -63,6 +63,9 @@ def run(config_path="config.json"):
     width, height = target_img.size
     target = np.array(target_img, dtype=np.float32)
 
+    selection_params = {k: v for k, v in cfg["selection"].items() if k not in ["method", "k"]}
+    crossover_params = {k: v for k, v in cfg["crossover"].items() if k != "method"}
+    
     select = SELECTION_METHODS[cfg["selection"]["method"]]
     cross = CROSSOVER_METHODS[cfg["crossover"]["method"]]
     mutate = MUTATION_METHODS[cfg["mutation"]["method"]]
@@ -71,11 +74,15 @@ def run(config_path="config.json"):
     population = initialize(cfg["population_size"], cfg["num_triangles"], width, height)
     evaluate_population(population, target, width, height)
 
+    # Pre-calculamos el vector de normalización para la diversidad
+    ranges = np.array([width, height, width, height, width, height, 255.0, 255.0, 255.0, 1.0])
+    norm_vector = np.tile(ranges, cfg["num_triangles"])
+
     best = max(population)
     fitness_values = [ind.fitness for ind in population]
     best_fitness_per_generation = [best.fitness]
     avg_fitness_per_generation = [float(np.mean(fitness_values))]
-    diversity_per_generation = [_compute_diversity(population)]
+    diversity_per_generation = [_compute_diversity(population, norm_vector)]
     print(f"Gen 0 | best fitness: {best.fitness:.6f}")
 
     stagnation_n = cfg.get("stagnation_generations")
@@ -84,58 +91,64 @@ def run(config_path="config.json"):
     best_ever = best.fitness
     gens_without_gain = 0
 
-    for generation in range(1, cfg["max_generations"] + 1):
-        parents = select(population, cfg["selection"]["k"])
+    try:
+        for generation in range(1, cfg["max_generations"] + 1):
+            parents = select(population, cfg["selection"]["k"], **selection_params)
 
-        random.shuffle(parents)
-        offspring = []
-        for i in range(0, len(parents) - 1, 2):
-            child1, child2 = cross(parents[i], parents[i + 1])
-            offspring.append(child1)
-            offspring.append(child2)
+            random.shuffle(parents)
+            offspring = []
+            for i in range(0, len(parents) - 1, 2):
+                child1, child2 = cross(parents[i], parents[i + 1], **crossover_params)
+                offspring.append(child1)
+                offspring.append(child2)
 
-        mut_params = cfg["mutation"]
-        offspring = [
-            mutate(
-                ind,
-                width,
-                height,
-                generation=generation,
-                max_generations=cfg["max_generations"],
-                **mut_params,
-            )
-            for ind in offspring
-        ]
+            mut_params = cfg["mutation"]
+            offspring = [
+                mutate(
+                    ind,
+                    width,
+                    height,
+                    generation=generation,
+                    max_generations=cfg["max_generations"],
+                    **mut_params,
+                )
+                for ind in offspring
+            ]
 
-        evaluate_population(offspring, target, width, height)
+            evaluate_population(offspring, target, width, height)
 
-        population = replace(population, offspring)
+            population = replace(population, offspring)
 
-        best = max(population)
-        fitness_values = [ind.fitness for ind in population]
-        best_fitness_per_generation.append(best.fitness)
-        avg_fitness_per_generation.append(float(np.mean(fitness_values)))
-        diversity_per_generation.append(_compute_diversity(population))
-        print(f"Gen {generation} | best fitness: {best.fitness:.6f}")
-
-        if best.fitness >= cfg.get("target_fitness", 1.0):
-            print("Criterio de parada: fitness objetivo alcanzado.")
-            break
-
-        if use_stagnation:
-            if best.fitness > best_ever + stagnation_eps:
-                best_ever = best.fitness
-                gens_without_gain = 0
+            best = max(population)
+            fitness_values = [ind.fitness for ind in population]
+            best_fitness_per_generation.append(best.fitness)
+            avg_fitness_per_generation.append(float(np.mean(fitness_values)))
+            if generation % 10 == 0:
+                diversity_per_generation.append(_compute_diversity(population, norm_vector))
             else:
-                gens_without_gain += 1
-                if best.fitness > best_ever:
+                diversity_per_generation.append(diversity_per_generation[-1])
+            print(f"Gen {generation} | best fitness: {best.fitness:.6f}")
+
+            if best.fitness >= cfg.get("target_fitness", 1.0):
+                print("Criterio de parada: fitness objetivo alcanzado.")
+                break
+
+            if use_stagnation:
+                if best.fitness > best_ever + stagnation_eps:
                     best_ever = best.fitness
-                if gens_without_gain >= stagnation_n:
-                    print(
-                        "Criterio de parada: estancamiento "
-                        f"({stagnation_n} generaciones sin mejora > {stagnation_eps})."
-                    )
-                    break
+                    gens_without_gain = 0
+                else:
+                    gens_without_gain += 1
+                    if best.fitness > best_ever:
+                        best_ever = best.fitness
+                    if gens_without_gain >= stagnation_n:
+                        print(
+                            "Criterio de parada: estancamiento "
+                            f"({stagnation_n} generaciones sin mejora > {stagnation_eps})."
+                        )
+                        break
+    except KeyboardInterrupt:
+        print("\nEjecución interrumpida por el usuario. Guardando estado actual...")
 
     os.makedirs("output", exist_ok=True)
     plot_fitness(best_fitness_per_generation, avg_fitness_per_generation)
@@ -174,10 +187,14 @@ def save_triangles(individual: Individual) -> None:
     print(f"Triángulos guardados en {triangles_path}")
 
 
-def _compute_diversity(population: list[Individual]) -> float:
-    """Diversidad genética: desviación estándar media de los genes de la población."""
+def _compute_diversity(population: list[Individual], norm_vector: np.ndarray) -> float:
+    """Diversidad genética normalizada: desviación estándar media de los genes normalizados [0,1]."""
+    if not population:
+        return 0.0
+    
     genes = np.array([ind.to_genes() for ind in population])
-    return float(np.mean(np.std(genes, axis=0)))
+    normalized_genes = genes / norm_vector
+    return float(np.mean(np.std(normalized_genes, axis=0)))
 
 
 def plot_fitness(

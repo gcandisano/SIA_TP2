@@ -59,8 +59,14 @@ def render(individual: Individual, width: int, height: int) -> Image.Image:
 def compute_fitness(individual: Individual, target: np.ndarray, width: int, height: int) -> float:
     rendered_img = render(individual, width, height).convert("RGB")
     rendered = np.array(rendered_img, dtype=np.float32)
-    mse = np.mean(np.square(rendered - target)) / (255.0 ** 2)
-    return 1.0 - float(mse)
+    
+    # Usamos MAE (Mean Absolute Error) en lugar de MSE
+    # MAE es más sensible a pequeños errores en los detalles (como el sol).
+    mae = np.mean(np.abs(rendered - target)) / 255.0
+    
+    # Aplicamos una raíz cuadrada para "estirar" el rango de fitness
+    # Esto aumenta la presión de selección cuando el fitness es alto.
+    return 1.0 - float(np.sqrt(mae))
 
 
 def _evaluate_single(individual: Individual, target: np.ndarray, width: int, height: int) -> float:
