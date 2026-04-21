@@ -1,9 +1,14 @@
 import argparse
+import copy
 import csv
+import inspect
 import json
 import os
 import random
+import re
 import sys
+from dataclasses import dataclass
+from typing import Optional
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -23,6 +28,55 @@ from population import initialize
 def load_config(path="config.json"):
     with open(path) as f:
         return json.load(f)
+
+
+def deep_merge(base: dict, override: dict) -> dict:
+    merged = copy.deepcopy(base)
+    for key, value in override.items():
+        if isinstance(value, dict) and isinstance(merged.get(key), dict):
+            merged[key] = deep_merge(merged[key], value)
+        else:
+            merged[key] = copy.deepcopy(value)
+    return merged
+
+
+def expand_runs(loaded: dict) -> list[tuple[str, dict]]:
+    if "runs" not in loaded:
+        return [("run", loaded)]
+
+    runs = loaded["runs"]
+    if not isinstance(runs, list):
+        raise ValueError("El campo 'runs' debe ser una lista de configuraciones.")
+    if not runs:
+        raise ValueError("El campo 'runs' no puede ser una lista vacía.")
+
+    base_cfg = {k: v for k, v in loaded.items() if k != "runs"}
+    expanded: list[tuple[str, dict]] = []
+    for idx, run_override in enumerate(runs, start=1):
+        if not isinstance(run_override, dict):
+            raise ValueError(
+                f"Cada elemento de 'runs' debe ser un objeto. Error en índice {idx - 1}."
+            )
+        override_cfg = copy.deepcopy(run_override)
+        label = override_cfg.pop("label", override_cfg.pop("name", f"run_{idx}"))
+        expanded.append((str(label), deep_merge(base_cfg, override_cfg)))
+    return expanded
+
+
+def slugify_label(label: str) -> str:
+    slug = re.sub(r"[^a-zA-Z0-9]+", "_", label.strip().lower())
+    slug = slug.strip("_")
+    return slug or "run"
+
+
+def filter_supported_kwargs(func, kwargs: dict) -> dict:
+    signature = inspect.signature(func)
+    if any(
+        parameter.kind == inspect.Parameter.VAR_KEYWORD
+        for parameter in signature.parameters.values()
+    ):
+        return kwargs
+    return {key: value for key, value in kwargs.items() if key in signature.parameters}
 
 
 SELECTION_METHODS = {
@@ -56,8 +110,22 @@ REPLACEMENT_METHODS = {
 }
 
 
-def run(config_path="config.json"):
-    cfg = load_config(config_path)
+@dataclass
+class RunResult:
+    best: Individual
+    best_fitness_per_generation: list[float]
+    avg_fitness_per_generation: list[float]
+    diversity_per_generation: list[float]
+    width: int
+    height: int
+
+
+def run_ga(cfg: dict, label: Optional[str] = None) -> RunResult:
+    prefix = f"[{label}] " if label else ""
+
+    if "seed" in cfg:
+        random.seed(cfg["seed"])
+        np.random.seed(cfg["seed"])
 
     target_img = Image.open(cfg["image_path"]).convert("RGB")
     width, height = target_img.size
@@ -70,6 +138,8 @@ def run(config_path="config.json"):
     cross = CROSSOVER_METHODS[cfg["crossover"]["method"]]
     mutate = MUTATION_METHODS[cfg["mutation"]["method"]]
     replace = REPLACEMENT_METHODS[cfg["replacement"]["method"]]
+    selection_params = filter_supported_kwargs(select, selection_params)
+    crossover_params = filter_supported_kwargs(cross, crossover_params)
 
     population = initialize(cfg["population_size"], cfg["num_triangles"], width, height)
     evaluate_population(population, target, width, height)
@@ -83,7 +153,7 @@ def run(config_path="config.json"):
     best_fitness_per_generation = [best.fitness]
     avg_fitness_per_generation = [float(np.mean(fitness_values))]
     diversity_per_generation = [_compute_diversity(population, norm_vector)]
-    print(f"Gen 0 | best fitness: {best.fitness:.6f}")
+    print(f"{prefix}Gen 0 | best fitness: {best.fitness:.6f}")
 
     stagnation_n = cfg.get("stagnation_generations")
     stagnation_eps = cfg.get("stagnation_epsilon", 1e-6)
@@ -108,9 +178,14 @@ def run(config_path="config.json"):
                     ind,
                     width,
                     height,
-                    generation=generation,
-                    max_generations=cfg["max_generations"],
-                    **mut_params,
+                    **filter_supported_kwargs(
+                        mutate,
+                        {
+                            **mut_params,
+                            "generation": generation,
+                            "max_generations": cfg["max_generations"],
+                        },
+                    ),
                 )
                 for ind in offspring
             ]
@@ -127,10 +202,10 @@ def run(config_path="config.json"):
                 diversity_per_generation.append(_compute_diversity(population, norm_vector))
             else:
                 diversity_per_generation.append(diversity_per_generation[-1])
-            print(f"Gen {generation} | best fitness: {best.fitness:.6f}")
+            print(f"{prefix}Gen {generation} | best fitness: {best.fitness:.6f}")
 
             if best.fitness >= cfg.get("target_fitness", 1.0):
-                print("Criterio de parada: fitness objetivo alcanzado.")
+                print(f"{prefix}Criterio de parada: fitness objetivo alcanzado.")
                 break
 
             if use_stagnation:
@@ -143,23 +218,79 @@ def run(config_path="config.json"):
                         best_ever = best.fitness
                     if gens_without_gain >= stagnation_n:
                         print(
-                            "Criterio de parada: estancamiento "
+                            f"{prefix}Criterio de parada: estancamiento "
                             f"({stagnation_n} generaciones sin mejora > {stagnation_eps})."
                         )
                         break
     except KeyboardInterrupt:
-        print("\nEjecución interrumpida por el usuario. Guardando estado actual...")
+        print(f"\n{prefix}Ejecución interrumpida por el usuario. Guardando estado actual...")
 
+    return RunResult(
+        best=best,
+        best_fitness_per_generation=best_fitness_per_generation,
+        avg_fitness_per_generation=avg_fitness_per_generation,
+        diversity_per_generation=diversity_per_generation,
+        width=width,
+        height=height,
+    )
+
+
+def run(config_path="config.json"):
+    loaded_cfg = load_config(config_path)
+    run_configs = expand_runs(loaded_cfg)
     os.makedirs("output", exist_ok=True)
-    plot_fitness(best_fitness_per_generation, avg_fitness_per_generation)
-    plot_diversity(diversity_per_generation)
-    save_metrics_csv(best_fitness_per_generation, avg_fitness_per_generation, diversity_per_generation)
-    render(best, width, height).convert("RGB").save("output/result.png")
-    print("Imagen guardada en output/result.png")
-    save_triangles(best)
 
-def save_triangles(individual: Individual) -> None:
-    triangles_path = "output/triangles.json"
+    if len(run_configs) == 1:
+        _, cfg = run_configs[0]
+        result = run_ga(cfg)
+        plot_fitness(result.best_fitness_per_generation, result.avg_fitness_per_generation)
+        plot_diversity(result.diversity_per_generation)
+        save_metrics_csv(
+            result.best_fitness_per_generation,
+            result.avg_fitness_per_generation,
+            result.diversity_per_generation,
+        )
+        render(result.best, result.width, result.height).convert("RGB").save("output/result.png")
+        print("Imagen guardada en output/result.png")
+        save_triangles(result.best)
+        return
+
+    best_histories: dict[str, list[float]] = {}
+    diversity_histories: dict[str, list[float]] = {}
+    used_slugs: set[str] = set()
+
+    for label, cfg in run_configs:
+        print(f"\n=== Ejecutando configuración: {label} ===")
+        result = run_ga(cfg, label=label)
+        best_histories[label] = result.best_fitness_per_generation
+        diversity_histories[label] = result.diversity_per_generation
+
+        base_slug = slugify_label(label)
+        slug = base_slug
+        suffix = 2
+        while slug in used_slugs:
+            slug = f"{base_slug}_{suffix}"
+            suffix += 1
+        used_slugs.add(slug)
+
+        result_path = f"output/result_{slug}.png"
+        metrics_path = f"output/metrics_{slug}.csv"
+        triangles_path = f"output/triangles_{slug}.json"
+
+        render(result.best, result.width, result.height).convert("RGB").save(result_path)
+        print(f"Imagen guardada en {result_path}")
+        save_triangles(result.best, triangles_path)
+        save_metrics_csv(
+            result.best_fitness_per_generation,
+            result.avg_fitness_per_generation,
+            result.diversity_per_generation,
+            metrics_path,
+        )
+
+    plot_fitness_comparison(best_histories)
+    plot_diversity_comparison(diversity_histories)
+
+def save_triangles(individual: Individual, triangles_path: str = "output/triangles.json") -> None:
     data = {
         "num_triangles": individual.num_triangles,
         "fitness": individual.fitness,
@@ -200,8 +331,8 @@ def _compute_diversity(population: list[Individual], norm_vector: np.ndarray) ->
 def plot_fitness(
     best_fitness_per_generation: list[float],
     avg_fitness_per_generation: list[float],
+    fitness_plot_path: str = "output/best_fitness.png",
 ):
-    fitness_plot_path = "output/best_fitness.png"
     gens = range(len(best_fitness_per_generation))
     fig, ax = plt.subplots(figsize=(8, 4))
     ax.plot(gens, best_fitness_per_generation, color="C0", label="Mejor fitness")
@@ -215,8 +346,26 @@ def plot_fitness(
     plt.close(fig)
 
 
-def plot_diversity(diversity_per_generation: list[float]):
-    diversity_plot_path = "output/diversity.png"
+def plot_fitness_comparison(
+    best_histories: dict[str, list[float]],
+    fitness_plot_path: str = "output/best_fitness.png",
+):
+    fig, ax = plt.subplots(figsize=(8, 4))
+    for idx, (label, history) in enumerate(best_histories.items()):
+        ax.plot(range(len(history)), history, color=f"C{idx % 10}", label=label)
+    ax.set_xlabel("Generación")
+    ax.set_ylabel("Fitness")
+    ax.legend()
+    ax.grid(True, alpha=0.3)
+    fig.tight_layout()
+    fig.savefig(fitness_plot_path, dpi=150)
+    plt.close(fig)
+
+
+def plot_diversity(
+    diversity_per_generation: list[float],
+    diversity_plot_path: str = "output/diversity.png",
+):
     gens = range(len(diversity_per_generation))
     fig, ax = plt.subplots(figsize=(8, 4))
     ax.plot(gens, diversity_per_generation, color="C2")
@@ -228,12 +377,28 @@ def plot_diversity(diversity_per_generation: list[float]):
     plt.close(fig)
 
 
+def plot_diversity_comparison(
+    diversity_histories: dict[str, list[float]],
+    diversity_plot_path: str = "output/diversity.png",
+):
+    fig, ax = plt.subplots(figsize=(8, 4))
+    for idx, (label, history) in enumerate(diversity_histories.items()):
+        ax.plot(range(len(history)), history, color=f"C{idx % 10}", label=label)
+    ax.set_xlabel("Generación")
+    ax.set_ylabel("Diversidad genética (σ media de genes)")
+    ax.legend()
+    ax.grid(True, alpha=0.3)
+    fig.tight_layout()
+    fig.savefig(diversity_plot_path, dpi=150)
+    plt.close(fig)
+
+
 def save_metrics_csv(
     best_fitness: list[float],
     avg_fitness: list[float],
     diversity: list[float],
+    csv_path: str = "output/metrics.csv",
 ):
-    csv_path = "output/metrics.csv"
     with open(csv_path, "w", newline="") as f:
         writer = csv.writer(f)
         writer.writerow(["generation", "best_fitness", "avg_fitness", "diversity"])
